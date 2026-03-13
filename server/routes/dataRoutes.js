@@ -7,196 +7,254 @@ const router = express.Router();
 router.use(protect);
 
 // GOALS
-router.get('/goals', (req, res) => {
-  const stmt = db.prepare('SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC');
-  const goals = stmt.all(req.user.id);
-  res.json({ goals });
-});
-
-router.post('/goals', (req, res) => {
-  const { title, category, description, deadline } = req.body;
-  if (!title) {
-    return res.status(400).json({ message: 'Title is required' });
+router.get('/goals', async (req, res) => {
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM goals WHERE user_id = ? ORDER BY created_at DESC',
+      args: [req.user.id]
+    });
+    res.json({ goals: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(`
-    INSERT INTO goals (user_id, title, category, deadline, description)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  const info = stmt.run(req.user.id, title, category || null, deadline || null, description || null);
-  const goal = db.prepare('SELECT * FROM goals WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ goal });
 });
 
-router.patch('/goals/:id', (req, res) => {
+router.post('/goals', async (req, res) => {
+  const { title, category, description, deadline } = req.body;
+  if (!title) return res.status(400).json({ message: 'Title is required' });
+  try {
+    const result = await db.execute({
+      sql: 'INSERT INTO goals (user_id, title, category, deadline, description) VALUES (?, ?, ?, ?, ?)',
+      args: [req.user.id, title, category || null, deadline || null, description || null]
+    });
+    const goal = await db.execute({
+      sql: 'SELECT * FROM goals WHERE id = ?',
+      args: [Number(result.lastInsertRowid)]
+    });
+    res.status(201).json({ goal: goal.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/goals/:id', async (req, res) => {
   const { id } = req.params;
   const { is_completed } = req.body;
-  const stmt = db.prepare(`
-    UPDATE goals SET is_completed = COALESCE(@is_completed, is_completed)
-    WHERE id = @id AND user_id = @user_id
-  `);
-  const info = stmt.run({ id, user_id: req.user.id, is_completed });
-  if (info.changes === 0) {
-    return res.status(404).json({ message: 'Goal not found' });
+  try {
+    const result = await db.execute({
+      sql: 'UPDATE goals SET is_completed = ? WHERE id = ? AND user_id = ?',
+      args: [is_completed, id, req.user.id]
+    });
+    if (result.rowsAffected === 0) return res.status(404).json({ message: 'Goal not found' });
+    const goal = await db.execute({ sql: 'SELECT * FROM goals WHERE id = ?', args: [id] });
+    res.json({ goal: goal.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const goal = db.prepare('SELECT * FROM goals WHERE id = ?').get(id);
-  res.json({ goal });
 });
 
-router.delete('/goals/:id', (req, res) => {
+router.delete('/goals/:id', async (req, res) => {
   const { id } = req.params;
-  const stmt = db.prepare('DELETE FROM goals WHERE id = ? AND user_id = ?');
-  const info = stmt.run(id, req.user.id);
-  if (info.changes === 0) {
-    return res.status(404).json({ message: 'Goal not found' });
+  try {
+    const result = await db.execute({
+      sql: 'DELETE FROM goals WHERE id = ? AND user_id = ?',
+      args: [id, req.user.id]
+    });
+    if (result.rowsAffected === 0) return res.status(404).json({ message: 'Goal not found' });
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  res.status(204).end();
 });
 
 // LOGS
-router.get('/logs', (req, res) => {
+router.get('/logs', async (req, res) => {
   const { date } = req.query;
-  if (!date) {
-    return res.status(400).json({ message: 'date query param is required (YYYY-MM-DD)' });
+  if (!date) return res.status(400).json({ message: 'date query param is required (YYYY-MM-DD)' });
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM daily_logs WHERE user_id = ? AND log_date = ? ORDER BY created_at DESC',
+      args: [req.user.id, date]
+    });
+    res.json({ logs: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(
-    'SELECT * FROM daily_logs WHERE user_id = ? AND log_date = ? ORDER BY created_at DESC'
-  );
-  const logs = stmt.all(req.user.id, date);
-  res.json({ logs });
 });
 
-router.post('/logs', (req, res) => {
+router.post('/logs', async (req, res) => {
   const { log_date, category, label, value, note } = req.body;
   if (!log_date || !category || !label) {
     return res.status(400).json({ message: 'log_date, category, and label are required' });
   }
-  const stmt = db.prepare(`
-    INSERT INTO daily_logs (user_id, log_date, category, label, value, note)
-    VALUES (?, ?, ?, ?, ?, ?)
-  `);
-  const info = stmt.run(
-    req.user.id,
-    log_date,
-    category,
-    label,
-    value != null ? value : null,
-    note || null
-  );
-  const log = db.prepare('SELECT * FROM daily_logs WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ log });
+  try {
+    const result = await db.execute({
+      sql: 'INSERT INTO daily_logs (user_id, log_date, category, label, value, note) VALUES (?, ?, ?, ?, ?, ?)',
+      args: [req.user.id, log_date, category, label, value != null ? value : null, note || null]
+    });
+    const log = await db.execute({
+      sql: 'SELECT * FROM daily_logs WHERE id = ?',
+      args: [Number(result.lastInsertRowid)]
+    });
+    res.status(201).json({ log: log.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-router.delete('/logs/:id', (req, res) => {
+router.delete('/logs/:id', async (req, res) => {
   const { id } = req.params;
-  const stmt = db.prepare('DELETE FROM daily_logs WHERE id = ? AND user_id = ?');
-  const info = stmt.run(id, req.user.id);
-  if (info.changes === 0) {
-    return res.status(404).json({ message: 'Log not found' });
+  try {
+    const result = await db.execute({
+      sql: 'DELETE FROM daily_logs WHERE id = ? AND user_id = ?',
+      args: [id, req.user.id]
+    });
+    if (result.rowsAffected === 0) return res.status(404).json({ message: 'Log not found' });
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  res.status(204).end();
 });
 
 // EXPENSES
-router.get('/expenses', (req, res) => {
+router.get('/expenses', async (req, res) => {
   const { month } = req.query;
-  if (!month) {
-    return res.status(400).json({ message: 'month query param is required (YYYY-MM)' });
+  if (!month) return res.status(400).json({ message: 'month query param is required (YYYY-MM)' });
+  try {
+    const result = await db.execute({
+      sql: "SELECT * FROM expenses WHERE user_id = ? AND strftime('%Y-%m', date) = ? ORDER BY date DESC, created_at DESC",
+      args: [req.user.id, month]
+    });
+    const total = result.rows.reduce((sum, e) => sum + (e.amount || 0), 0);
+    res.json({ expenses: result.rows, total });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(`
-    SELECT * FROM expenses
-    WHERE user_id = ? AND strftime('%Y-%m', date) = ?
-    ORDER BY date DESC, created_at DESC
-  `);
-  const expenses = stmt.all(req.user.id, month);
-  const total = expenses.reduce((sum, e) => sum + (e.amount || 0), 0);
-  res.json({ expenses, total });
 });
 
-router.post('/expenses', (req, res) => {
+router.post('/expenses', async (req, res) => {
   const { amount, category, label, date } = req.body;
-  if (amount == null || !date) {
-    return res.status(400).json({ message: 'amount and date are required' });
+  if (amount == null || !date) return res.status(400).json({ message: 'amount and date are required' });
+  try {
+    const result = await db.execute({
+      sql: 'INSERT INTO expenses (user_id, amount, category, label, date) VALUES (?, ?, ?, ?, ?)',
+      args: [req.user.id, amount, category || null, label || null, date]
+    });
+    const expense = await db.execute({
+      sql: 'SELECT * FROM expenses WHERE id = ?',
+      args: [Number(result.lastInsertRowid)]
+    });
+    res.status(201).json({ expense: expense.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(`
-    INSERT INTO expenses (user_id, amount, category, label, date)
-    VALUES (?, ?, ?, ?, ?)
-  `);
-  const info = stmt.run(req.user.id, amount, category || null, label || null, date);
-  const expense = db.prepare('SELECT * FROM expenses WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ expense });
 });
 
-router.delete('/expenses/:id', (req, res) => {
+router.delete('/expenses/:id', async (req, res) => {
   const { id } = req.params;
-  const stmt = db.prepare('DELETE FROM expenses WHERE id = ? AND user_id = ?');
-  const info = stmt.run(id, req.user.id);
-  if (info.changes === 0) {
-    return res.status(404).json({ message: 'Expense not found' });
+  try {
+    const result = await db.execute({
+      sql: 'DELETE FROM expenses WHERE id = ? AND user_id = ?',
+      args: [id, req.user.id]
+    });
+    if (result.rowsAffected === 0) return res.status(404).json({ message: 'Expense not found' });
+    res.status(204).end();
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  res.status(204).end();
 });
 
 // ACHIEVEMENTS
-router.get('/achievements', (req, res) => {
-  const stmt = db.prepare('SELECT * FROM achievements WHERE user_id = ? ORDER BY unlocked_at DESC');
-  const achievements = stmt.all(req.user.id);
-  res.json({ achievements });
+router.get('/achievements', async (req, res) => {
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM achievements WHERE user_id = ? ORDER BY unlocked_at DESC',
+      args: [req.user.id]
+    });
+    res.json({ achievements: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
 });
 
-router.post('/achievements', (req, res) => {
+router.post('/achievements', async (req, res) => {
   const { title, description, icon } = req.body;
-  if (!title) {
-    return res.status(400).json({ message: 'Title is required' });
+  if (!title) return res.status(400).json({ message: 'Title is required' });
+  try {
+    const result = await db.execute({
+      sql: 'INSERT INTO achievements (user_id, title, description, icon) VALUES (?, ?, ?, ?)',
+      args: [req.user.id, title, description || null, icon || null]
+    });
+    const achievement = await db.execute({
+      sql: 'SELECT * FROM achievements WHERE id = ?',
+      args: [Number(result.lastInsertRowid)]
+    });
+    res.status(201).json({ achievement: achievement.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(`
-    INSERT INTO achievements (user_id, title, description, icon)
-    VALUES (?, ?, ?, ?)
-  `);
-  const info = stmt.run(req.user.id, title, description || null, icon || null);
-  const achievement = db.prepare('SELECT * FROM achievements WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ achievement });
 });
 
 // PRIZES
-router.get('/prizes', (req, res) => {
-  const stmt = db.prepare('SELECT * FROM prizes WHERE user_id = ? ORDER BY created_at DESC');
-  const prizes = stmt.all(req.user.id);
-  res.json({ prizes });
-});
-
-router.post('/prizes', (req, res) => {
-  const { title, description, points_required } = req.body;
-  if (!title) {
-    return res.status(400).json({ message: 'Title is required' });
+router.get('/prizes', async (req, res) => {
+  try {
+    const result = await db.execute({
+      sql: 'SELECT * FROM prizes WHERE user_id = ? ORDER BY created_at DESC',
+      args: [req.user.id]
+    });
+    res.json({ prizes: result.rows });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const stmt = db.prepare(`
-    INSERT INTO prizes (user_id, title, description, points_required)
-    VALUES (?, ?, ?, ?)
-  `);
-  const info = stmt.run(
-    req.user.id,
-    title,
-    description || null,
-    points_required != null ? points_required : 0
-  );
-  const prize = db.prepare('SELECT * FROM prizes WHERE id = ?').get(info.lastInsertRowid);
-  res.status(201).json({ prize });
 });
 
-router.patch('/prizes/:id', (req, res) => {
+router.post('/prizes', async (req, res) => {
+  const { title, description, points_required } = req.body;
+  if (!title) return res.status(400).json({ message: 'Title is required' });
+  try {
+    const result = await db.execute({
+      sql: 'INSERT INTO prizes (user_id, title, description, points_required) VALUES (?, ?, ?, ?)',
+      args: [req.user.id, title, description || null, points_required != null ? points_required : 0]
+    });
+    const prize = await db.execute({
+      sql: 'SELECT * FROM prizes WHERE id = ?',
+      args: [Number(result.lastInsertRowid)]
+    });
+    res.status(201).json({ prize: prize.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+router.patch('/prizes/:id', async (req, res) => {
   const { id } = req.params;
   const { is_claimed } = req.body;
-  const stmt = db.prepare(`
-    UPDATE prizes SET is_claimed = COALESCE(@is_claimed, is_claimed)
-    WHERE id = @id AND user_id = @user_id
-  `);
-  const info = stmt.run({ id, user_id: req.user.id, is_claimed });
-  if (info.changes === 0) {
-    return res.status(404).json({ message: 'Prize not found' });
+  try {
+    const result = await db.execute({
+      sql: 'UPDATE prizes SET is_claimed = ? WHERE id = ? AND user_id = ?',
+      args: [is_claimed, id, req.user.id]
+    });
+    if (result.rowsAffected === 0) return res.status(404).json({ message: 'Prize not found' });
+    const prize = await db.execute({ sql: 'SELECT * FROM prizes WHERE id = ?', args: [id] });
+    res.json({ prize: prize.rows[0] });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: 'Server error' });
   }
-  const prize = db.prepare('SELECT * FROM prizes WHERE id = ?').get(id);
-  res.json({ prize });
 });
 
 module.exports = router;
-

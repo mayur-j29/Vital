@@ -6,18 +6,20 @@ const db = require('./models/db');
 
 const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
 
-const findUserByEmailStmt = db.prepare('SELECT * FROM users WHERE email = ?');
-
 passport.use(
   new LocalStrategy(
     { usernameField: 'email', passwordField: 'password', session: false },
-    (email, password, done) => {
+    async (email, password, done) => {
       try {
-        const user = findUserByEmailStmt.get(email);
+        const result = await db.execute({
+          sql: 'SELECT * FROM users WHERE email = ?',
+          args: [email]
+        });
+        const user = result.rows[0];
         if (!user) {
           return done(null, false, { message: 'Invalid email or password' });
         }
-        const match = bcrypt.compareSync(password, user.password_hash);
+        const match = await bcrypt.compare(password, user.password_hash);
         if (!match) {
           return done(null, false, { message: 'Invalid email or password' });
         }
@@ -33,10 +35,13 @@ passport.serializeUser((user, done) => {
   done(null, user.id);
 });
 
-passport.deserializeUser((id, done) => {
+passport.deserializeUser(async (id, done) => {
   try {
-    const stmt = db.prepare('SELECT * FROM users WHERE id = ?');
-    const user = stmt.get(id);
+    const result = await db.execute({
+      sql: 'SELECT * FROM users WHERE id = ?',
+      args: [id]
+    });
+    const user = result.rows[0];
     done(null, user || false);
   } catch (err) {
     done(err);
@@ -59,4 +64,3 @@ module.exports = {
   passport,
   generateToken
 };
-

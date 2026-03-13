@@ -6,14 +6,7 @@ const protect = require('../middleware/protect');
 
 const router = express.Router();
 
-const createUserStmt = db.prepare(`
-  INSERT INTO users (name, email, password_hash)
-  VALUES (@name, @email, @password_hash)
-`);
-
-const findUserByEmailStmt = db.prepare('SELECT * FROM users WHERE email = ?');
-
-router.post('/register', (req, res) => {
+router.post('/register', async (req, res) => {
   const { name, email, password } = req.body;
 
   if (!name || !email || !password) {
@@ -21,15 +14,21 @@ router.post('/register', (req, res) => {
   }
 
   try {
-    const existing = findUserByEmailStmt.get(email);
-    if (existing) {
+    const existing = await db.execute({
+      sql: 'SELECT * FROM users WHERE email = ?',
+      args: [email]
+    });
+    if (existing.rows[0]) {
       return res.status(409).json({ message: 'Email already in use' });
     }
 
-    const password_hash = bcrypt.hashSync(password, 12);
-    const info = createUserStmt.run({ name, email, password_hash });
-    const user = { id: info.lastInsertRowid, name, email };
+    const password_hash = await bcrypt.hash(password, 12);
+    const result = await db.execute({
+      sql: 'INSERT INTO users (name, email, password_hash) VALUES (?, ?, ?)',
+      args: [name, email, password_hash]
+    });
 
+    const user = { id: Number(result.lastInsertRowid), name, email };
     const token = generateToken(user);
     res.status(201).json({ token, user });
   } catch (err) {
@@ -55,4 +54,3 @@ router.get('/me', protect, (req, res) => {
 });
 
 module.exports = router;
-
