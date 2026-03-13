@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vitál — Dashboard</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/reset.css" />
+    <link rel="stylesheet" href="./css/variables.css" />
+    <link rel="stylesheet" href="./css/animations.css" />
+    <link rel="stylesheet" href="./css/main.css" />
+    <script src="https://unpkg.com/lucide@latest"></script>
+  </head>
+  <body class="app-body">
+    <div class="app-shell">
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <span class="sidebar-logo">Vitál</span>
+        </div>
+        <nav class="sidebar-nav" aria-label="Primary">
+          <button class="nav-item active" data-section="today">
+            <span class="nav-icon" data-lucide="sun"></span>
+            <span class="nav-label">Today</span>
+          </button>
+          <button class="nav-item" data-section="goals">
+            <span class="nav-icon" data-lucide="flag"></span>
+            <span class="nav-label">Goals</span>
+          </button>
+          <button class="nav-item" data-section="log">
+            <span class="nav-icon" data-lucide="list-checks"></span>
+            <span class="nav-label">Log</span>
+          </button>
+          <button class="nav-item" data-section="expenses">
+            <span class="nav-icon" data-lucide="wallet"></span>
+            <span class="nav-label">Expenses</span>
+          </button>
+          <button class="nav-item" data-section="rewards">
+            <span class="nav-icon" data-lucide="sparkles"></span>
+            <span class="nav-label">Rewards</span>
+          </button>
+          <div class="nav-active-indicator"></div>
+        </nav>
+        <footer class="sidebar-footer">
+          <div class="sidebar-user">
+            <span class="sidebar-user-name" id="sidebar-user-name"></span>
+          </div>
+          <button id="logout-btn" class="btn ghost small">Logout</button>
+        </footer>
+      </aside>
+
+      <main class="main">
+        <header class="main-header">
+          <div>
+            <p class="main-kicker" id="greeting"></p>
+            <h2 class="main-title" id="main-title">Today</h2>
+          </div>
+          <p class="main-date" id="main-date"></p>
+        </header>
+
+        <section id="section-container" class="section-container section-transition"></section>
+      </main>
+    </div>
+
+    <nav class="mobile-tabbar" aria-label="Bottom navigation">
+      <button class="tab-item active" data-section="today">
+        <span class="nav-icon" data-lucide="sun"></span>
+        <span class="nav-label">Today</span>
+      </button>
+      <button class="tab-item" data-section="goals">
+        <span class="nav-icon" data-lucide="flag"></span>
+        <span class="nav-label">Goals</span>
+      </button>
+      <button class="tab-item" data-section="log">
+        <span class="nav-icon" data-lucide="list-checks"></span>
+        <span class="nav-label">Log</span>
+      </button>
+      <button class="tab-item" data-section="expenses">
+        <span class="nav-icon" data-lucide="wallet"></span>
+        <span class="nav-label">Expenses</span>
+      </button>
+    </nav>
+
+    <script type="module" src="./js/app.js"></script>
+  </body>
+</html>
+

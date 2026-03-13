@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Vitál — Daily Health & Life Tracker</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&family=JetBrains+Mono:wght@400;500&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./css/reset.css" />
+    <link rel="stylesheet" href="./css/variables.css" />
+    <link rel="stylesheet" href="./css/animations.css" />
+    <link rel="stylesheet" href="./css/main.css" />
+  </head>
+  <body class="auth-body">
+    <main class="auth-shell">
+      <section class="auth-card surface shadow">
+        <header class="auth-header">
+          <h1 class="app-logo">Vitál</h1>
+          <p class="tagline">Everything you track. One place. Nothing extra.</p>
+        </header>
+
+        <div class="auth-toggle" aria-label="Toggle between login and register">
+          <button class="auth-toggle-btn active" data-mode="login">Login</button>
+          <button class="auth-toggle-btn" data-mode="register">Register</button>
+          <div class="auth-toggle-indicator"></div>
+        </div>
+
+        <form id="auth-form" class="auth-form" novalidate>
+          <div class="form-group" id="name-group" hidden>
+            <label for="name">Name</label>
+            <input id="name" name="name" type="text" autocomplete="name" />
+          </div>
+          <div class="form-group">
+            <label for="email">Email</label>
+            <input id="email" name="email" type="email" autocomplete="email" required />
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input
+              id="password"
+              name="password"
+              type="password"
+              autocomplete="current-password"
+              required
+            />
+          </div>
+          <p class="form-error" id="auth-error" aria-live="polite"></p>
+          <button type="submit" class="btn primary full-width" id="auth-submit">
+            <span class="btn-label">Login</span>
+            <span class="btn-spinner" aria-hidden="true"></span>
+            <span class="btn-check" aria-hidden="true">✓</span>
+          </button>
+        </form>
+      </section>
+    </main>
+
+    <script type="module" src="./js/auth.js"></script>
+  </body>
+</html>
+
